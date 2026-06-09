@@ -56,6 +56,19 @@ body {
   transform-origin: center center;
 }
 
+.corner-deco {
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  pointer-events: none;
+  z-index: 10;
+  overflow: visible;
+}
+#corner-tl { top: 0;    left: 90px; }
+#corner-tr { top: 0;    right: 90px; transform: scaleX(-1); }
+#corner-bl { bottom: 0; left: 90px;  transform: scaleY(-1); }
+#corner-br { bottom: 0; right: 90px; transform: scale(-1,-1); }
+
 /* ── App layout ──────────────────────────────────────────── */
 
 #app {
@@ -77,6 +90,21 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  transition: box-shadow 0.35s;
+}
+
+#panel-left.active {
+  box-shadow:
+    -6px  0 22px rgba(255, 240,   0, 0.90),
+    -18px 0 60px rgba(255, 215,   0, 0.60),
+    -36px 0 110px rgba(255, 190,  0, 0.28);
+}
+
+#panel-right.active {
+  box-shadow:
+     6px  0 22px rgba(255, 240,   0, 0.90),
+     18px 0 60px rgba(255, 215,   0, 0.60),
+     36px 0 110px rgba(255, 190,  0, 0.28);
 }
 
 .panel-inner {
@@ -89,6 +117,7 @@ body {
   justify-content: space-between;
   padding: 0 20px;
   border-radius: 12px;
+  transition: border-color 0.35s, box-shadow 0.35s;
 }
 
 /* Elphaba (left) — forest green panel */
@@ -142,21 +171,7 @@ body {
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
-/* Elphaba's score card active glow — forest green */
-#left-score-black.active,
-#right-score-black.active {
-  background: rgba(27, 94, 32, 0.22);
-  border-color: #81c784;
-  box-shadow: 0 0 12px rgba(129, 199, 132, 0.35);
-}
 
-/* Glinda's score card active glow — pink */
-#left-score-white.active,
-#right-score-white.active {
-  background: rgba(216, 27, 96, 0.18);
-  border-color: #f48fb1;
-  box-shadow: 0 0 12px rgba(244, 143, 177, 0.35);
-}
 
 .score-item .piece {
   width: 26px;
@@ -180,16 +195,146 @@ body {
 }
 
 .panel-status {
-  font-size: 15px;
-  font-weight: 500;
-  color: #c8e6c9;
-  transition: color 0.2s;
-  white-space: nowrap;
+  display: none;
 }
 
-.panel-status.warning {
-  color: #ffee58;
-  font-weight: 700;
+/* ── Character icons (wand / broomstick) ─────────────────── */
+
+.panel-icon {
+  position: absolute;
+  left: 450px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Default assignment: left = Elphaba (broomstick), right = Glinda (wand) */
+#panel-left  .wand-icon        { display: none;  }
+#panel-right .broomstick-icon  { display: none;  }
+
+/* Swapped assignment: left = Glinda (wand), right = Elphaba (broomstick) */
+#ipad-frame.glinda-left #panel-left  .broomstick-icon { display: none;  }
+#ipad-frame.glinda-left #panel-left  .wand-icon       { display: block; }
+#ipad-frame.glinda-left #panel-right .wand-icon       { display: none;  }
+#ipad-frame.glinda-left #panel-right .broomstick-icon { display: block; }
+
+.wand-icon {
+  filter:
+    drop-shadow(0 0  5px rgba(233,  30, 140, 0.85))
+    drop-shadow(0 0 14px rgba(233,  30, 140, 0.45));
+}
+
+.broomstick-icon {
+  filter:
+    drop-shadow(0 0  5px rgba( 67, 160,  71, 0.85))
+    drop-shadow(0 0 14px rgba( 67, 160,  71, 0.45));
+}
+
+/* ── Player name strips ──────────────────────────────────── */
+
+.player-name-strip {
+  width: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  position: relative;
+}
+
+.player-name-strip span {
+  position: absolute;
+  white-space: nowrap;
+  font-family: 'Cinzel', serif;
+  font-size: 84px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow:
+    -1px -1px 0 #FFFBE0,
+    -2px -2px 0 #FFE566,
+    -3px -3px 0 #FFD700,
+     1px  1px 0 #8B6200,
+     2px  2px 0 #6B4800,
+     3px  3px 0 #4A3000,
+     0 0 24px rgba(212, 168, 40, 0.45);
+}
+
+#name-strip-left  span {
+  transform: translateX(15px) rotate(90deg);
+  color: #43A047;
+}
+#name-strip-right span {
+  transform: translateX(-15px) rotate(-90deg);
+  color: #E91E8C;
+}
+
+#ipad-frame.glinda-left #name-strip-left span {
+  color: #E91E8C;
+}
+#ipad-frame.glinda-left #name-strip-right span {
+  color: #43A047;
+}
+
+@keyframes bevel-spin {
+  0% {
+    text-shadow:
+      -1px -1px 0 #FFFBE0, -2px -2px 0 #FFE566, -3px -3px 0 #FFD700,
+       1px  1px 0 #8B6200,  2px  2px 0 #6B4800,  3px  3px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  12.5% {
+    text-shadow:
+      -1px  0px 0 #FFFBE0, -3px  0px 0 #FFE566, -4px  0px 0 #FFD700,
+       1px  0px 0 #8B6200,  3px  0px 0 #6B4800,  4px  0px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  25% {
+    text-shadow:
+      -1px  1px 0 #FFFBE0, -2px  2px 0 #FFE566, -3px  3px 0 #FFD700,
+       1px -1px 0 #8B6200,  2px -2px 0 #6B4800,  3px -3px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  37.5% {
+    text-shadow:
+       0px  1px 0 #FFFBE0,  0px  3px 0 #FFE566,  0px  4px 0 #FFD700,
+       0px -1px 0 #8B6200,  0px -3px 0 #6B4800,  0px -4px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  50% {
+    text-shadow:
+       1px  1px 0 #FFFBE0,  2px  2px 0 #FFE566,  3px  3px 0 #FFD700,
+      -1px -1px 0 #8B6200, -2px -2px 0 #6B4800, -3px -3px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  62.5% {
+    text-shadow:
+       1px  0px 0 #FFFBE0,  3px  0px 0 #FFE566,  4px  0px 0 #FFD700,
+      -1px  0px 0 #8B6200, -3px  0px 0 #6B4800, -4px  0px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  75% {
+    text-shadow:
+       1px -1px 0 #FFFBE0,  2px -2px 0 #FFE566,  3px -3px 0 #FFD700,
+      -1px  1px 0 #8B6200, -2px  2px 0 #6B4800, -3px  3px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  87.5% {
+    text-shadow:
+       0px -1px 0 #FFFBE0,  0px -3px 0 #FFE566,  0px -4px 0 #FFD700,
+       0px  1px 0 #8B6200,  0px  3px 0 #6B4800,  0px  4px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+  100% {
+    text-shadow:
+      -1px -1px 0 #FFFBE0, -2px -2px 0 #FFE566, -3px -3px 0 #FFD700,
+       1px  1px 0 #8B6200,  2px  2px 0 #6B4800,  3px  3px 0 #4A3000,
+       0 0 24px rgba(212,168,40,0.45);
+  }
+}
+
+.bevel-spinning {
+  animation: bevel-spin 0.45s linear;
 }
 
 /* ── Board — Yellow Brick Road ───────────────────────────── */
@@ -203,7 +348,7 @@ body {
 
 #board-inner {
   padding: 8px;
-  background: #5a3e08;
+  background: #0c1a0c;
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7),
               0 0 40px rgba(212, 168, 40, 0.18),
@@ -221,7 +366,8 @@ body {
 }
 
 .cell {
-  background: linear-gradient(145deg, #f5e050 0%, #e8c830 50%, #c89820 100%);
+  background-image:
+    linear-gradient(145deg, #f5e050 0%, #e8c830 50%, #c89820 100%);
   box-shadow: inset 2px 2px 3px rgba(255, 248, 180, 0.55),
               inset -2px -2px 3px rgba(80, 55, 0, 0.35);
   display: flex;
@@ -235,6 +381,10 @@ body {
 
 .cell.drag-over {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75);
+}
+
+#ipad-frame.dragging .hint {
+  visibility: hidden;
 }
 
 /* ── Pieces ──────────────────────────────────────────────── */
@@ -441,6 +591,10 @@ button:active {
 #modal-left  .btn-play-again { background: #2e7d32; }
 #modal-left  .btn-play-again:active { background: #1b5e20; }
 #modal-right .btn-play-again { background: #c2185b; }
+
+.btn-play-again.ready {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 14px rgba(255, 255, 255, 0.4);
+}
 #modal-right .btn-play-again:active { background: #880e4f; }
 
 /* ── Startup overlay ─────────────────────────────────────── */
@@ -507,15 +661,371 @@ button:active {
   margin-bottom: 6px;
 }
 
+.username-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.btn-username {
+  flex: 1;
+  padding: 9px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.btn-username:hover:not(:disabled):not(.selected) {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.btn-username:disabled {
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* Selected state — default: left=Elphaba(green), right=Glinda(pink) */
+#start-modal-left  .btn-username.selected {
+  background: #2e7d32;
+  border-color: #81c784;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(67, 160, 71, 0.60);
+}
+#start-modal-right .btn-username.selected {
+  background: #c2185b;
+  border-color: #f48fb1;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(233, 30, 140, 0.60);
+}
+/* Swapped assignment */
+#ipad-frame.glinda-left #start-modal-left  .btn-username.selected {
+  background: #c2185b;
+  border-color: #f48fb1;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(233, 30, 140, 0.60);
+}
+#ipad-frame.glinda-left #start-modal-right .btn-username.selected {
+  background: #2e7d32;
+  border-color: #81c784;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(67, 160, 71, 0.60);
+}
+
 .btn-continue {
+  margin-top: 20px;
   padding: 12px 44px;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
+  opacity: 0.38;
+  transition: opacity 0.2s, box-shadow 0.2s, background 0.15s, transform 0.1s;
+}
+
+.btn-continue:disabled {
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.btn-continue.ready {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 14px rgba(255, 255, 255, 0.4);
 }
 
 #start-modal-left  .btn-continue { background: #2e7d32; }
 #start-modal-left  .btn-continue:active { background: #1b5e20; }
 #start-modal-right .btn-continue { background: #c2185b; }
 #start-modal-right .btn-continue:active { background: #880e4f; }
+
+/* ── AI toggle button ────────────────────────────────────── */
+
+.btn-ai-toggle {
+  width: 100%;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 2px solid rgba(212, 168, 40, 0.35);
+  background: rgba(212, 168, 40, 0.07);
+  color: rgba(212, 168, 40, 0.6);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btn-ai-toggle:hover {
+  border-color: rgba(212, 168, 40, 0.65);
+  background: rgba(212, 168, 40, 0.14);
+  color: #D4A017;
+}
+
+.btn-ai-toggle:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-ai-toggle.selected {
+  border-color: #D4A017;
+  background: rgba(212, 168, 40, 0.22);
+  color: #FFD700;
+  box-shadow: 0 0 14px rgba(212, 168, 40, 0.5);
+}
+
+#unlock-panel {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.unlock-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s, color 0.1s, box-shadow 0.1s;
+}
+
+.unlock-btn.lit {
+  border-color: #D4A017;
+  background: rgba(212, 168, 40, 0.28);
+  color: #FFD700;
+  box-shadow: 0 0 10px rgba(212, 168, 40, 0.65);
+}
+
+/* ── Randomize button ────────────────────────────────────── */
+
+#randomize-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffee58;
+  z-index: 25;
+  transition: opacity 0.15s;
+}
+
+#randomize-btn:hover {
+  background: transparent;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+}
+
+#randomize-btn:active {
+  background: transparent;
+  transform: translate(-50%, -50%) scale(0.97);
+}
+
+#randomize-btn svg {
+  display: block;
+  width: 158px;
+  height: 158px;
+}
+
+/* ── Character orbit tokens ──────────────────────────────── */
+
+.char-token {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 24;
+  transition: opacity 0.2s;
+}
+
+#token-elphaba {
+  background: radial-gradient(circle at 38% 35%, #81c784, #1b5e20);
+  box-shadow: 0 0 24px rgba(129, 199, 132, 0.65), 1px 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+#token-glinda {
+  background: radial-gradient(circle at 38% 35%, #f8bbd0, #d81b60);
+  box-shadow: 0 0 24px rgba(244, 143, 177, 0.65), 1px 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* Dim modals and disable button while animating */
+#start-overlay.animating .start-modal {
+  opacity: 0.2;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+#start-overlay.animating #randomize-btn {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ── Swapped assignment: Glinda left, Elphaba right ─────── */
+
+#ipad-frame.glinda-left #panel-left .panel-inner {
+  background: rgba(173, 20, 87, 0.45);
+  border-color: rgba(244, 143, 177, 0.50);
+}
+
+#ipad-frame.glinda-left #panel-right .panel-inner {
+  background: rgba(27, 94, 32, 0.55);
+  border-color: rgba(129, 199, 132, 0.45);
+}
+
+#panel-left.active .panel-inner,
+#panel-right.active .panel-inner {
+  border-color: #ffd700 !important;
+  box-shadow:
+    0 0 12px rgba(255, 215,   0, 1.00),
+    0 0 28px rgba(255, 200,   0, 0.70),
+    0 0 52px rgba(255, 170,   0, 0.35);
+}
+
+#ipad-frame.glinda-left #panel-left  .btn-new-game        { background: #c2185b; }
+#ipad-frame.glinda-left #panel-left  .btn-new-game:active  { background: #880e4f; }
+#ipad-frame.glinda-left #panel-right .btn-new-game        { background: #2e7d32; }
+#ipad-frame.glinda-left #panel-right .btn-new-game:active  { background: #1b5e20; }
+
+#ipad-frame.glinda-left #start-modal-left  { background: rgba(80, 10, 40, 0.92); border-color: #f48fb1; }
+#ipad-frame.glinda-left #start-modal-right { background: rgba(15, 41, 20, 0.95); border-color: #81c784; }
+
+#ipad-frame.glinda-left #start-modal-left  .btn-continue        { background: #c2185b; }
+#ipad-frame.glinda-left #start-modal-left  .btn-continue:active  { background: #880e4f; }
+#ipad-frame.glinda-left #start-modal-right .btn-continue        { background: #2e7d32; }
+#ipad-frame.glinda-left #start-modal-right .btn-continue:active  { background: #1b5e20; }
+
+#ipad-frame.glinda-left #modal-left  { background: rgba(80, 10, 40, 0.96); border-color: #f48fb1; }
+#ipad-frame.glinda-left #modal-right { background: rgba(15, 41, 20, 0.96); border-color: #81c784; }
+
+#ipad-frame.glinda-left #modal-left  .btn-play-again        { background: #c2185b; }
+#ipad-frame.glinda-left #modal-left  .btn-play-again:active  { background: #880e4f; }
+#ipad-frame.glinda-left #modal-right .btn-play-again        { background: #2e7d32; }
+#ipad-frame.glinda-left #modal-right .btn-play-again:active  { background: #1b5e20; }
+
+/* ── Cell placement shimmer ─────────────────────────────── */
+
+.cell-shimmer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 3;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.cell-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent          0%,
+    rgba(255,252,190,0.45) 18%,
+    rgba(255,255,255,0.95) 30%,
+    rgba(255,252,130,0.85) 40%,
+    rgba(255,255,255,0.95) 50%,
+    rgba(255,252,190,0.45) 62%,
+    transparent          80%
+  );
+  animation: gold-shimmer 0.72s ease-in-out forwards;
+}
+
+@keyframes gold-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%);  }
+}
+
+/* ── Glinda bubble burst ─────────────────────────────────── */
+
+.glinda-bubble {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255,255,255,0.98) 0%, transparent 22%),
+    radial-gradient(circle at 72% 76%, rgba(255,255,255,0.70) 0%, transparent 18%),
+    radial-gradient(circle at 50% 50%,
+      rgba(255,180,240,0.45) 0%,
+      rgba(180,220,255,0.35) 40%,
+      rgba(200,255,240,0.20) 65%,
+      transparent 80%);
+  border: 2px solid rgba(255,255,255,0.70);
+  box-shadow:
+    inset 2px 2px 6px rgba(255,255,255,0.80),
+    inset -1px -1px 4px rgba(200,180,255,0.40),
+    0 0 14px rgba(255,180,255,0.65),
+    0 0 28px rgba(180,220,255,0.40);
+}
+
+/* ── Elphaba spark & smoke effects ───────────────────────── */
+
+.elphaba-spark {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  background:
+    radial-gradient(ellipse at 38% 46%,
+      #ffffff        0%,
+      rgba(255,255,220,0.95) 14%,
+      transparent   40%),
+    linear-gradient(to right,
+      transparent                   0%,
+      rgba(255,140,  0, 0.38)      14%,
+      rgba(255,210,  0, 0.88)      30%,
+      rgba(255,255,255,0.96)       50%,
+      rgba(255,210,  0, 0.88)      70%,
+      rgba(255,140,  0, 0.38)      86%,
+      transparent                  100%);
+  box-shadow:
+    0 0  4px rgba(255,240,  0, 1.00),
+    0 0 10px rgba(255,160,  0, 0.80),
+    0 0 20px rgba(220, 80,  0, 0.55),
+    0 0 36px rgba(180, 20,  0, 0.28);
+}
+
+.elphaba-smoke {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  background: radial-gradient(circle at 44% 38%,
+    rgba(140,230,140, 0.62)  0%,
+    rgba( 40,140, 40, 0.56) 35%,
+    rgba( 15, 72, 15, 0.36) 62%,
+    rgba( 10, 40, 10, 0.14) 78%,
+    transparent             90%);
+  filter: blur(5px);
+}
