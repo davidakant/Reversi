@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Reversi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="ipad-frame">
+    <div id="app">
+
+      <!-- Left player panel — inner rotated -90° so it reads correctly from the left short side -->
+      <div id="panel-left" class="player-panel">
+        <div class="panel-inner">
+          <div class="panel-scores">
+            <div class="score-item" id="left-score-black">
+              <div class="piece black"></div>
+              <span class="score-num" id="left-black-count">2</span>
+            </div>
+            <div class="score-item" id="left-score-white">
+              <div class="piece white"></div>
+              <span class="score-num" id="left-white-count">2</span>
+            </div>
+          </div>
+          <div class="piece-slot" id="left-slot"></div>
+          <div class="panel-end">
+            <span class="panel-status" id="left-status">Black's turn</span>
+            <button class="btn-new-game">New Game</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Board -->
+      <div id="board-wrap">
+        <div id="board-inner">
+          <div id="board"></div>
+        </div>
+      </div>
+
+      <!-- Right player panel — inner rotated +90° so it reads correctly from the right short side -->
+      <div id="panel-right" class="player-panel">
+        <div class="panel-inner">
+          <div class="panel-scores">
+            <div class="score-item" id="right-score-black">
+              <div class="piece black"></div>
+              <span class="score-num" id="right-black-count">2</span>
+            </div>
+            <div class="score-item" id="right-score-white">
+              <div class="piece white"></div>
+              <span class="score-num" id="right-white-count">2</span>
+            </div>
+          </div>
+          <div class="piece-slot" id="right-slot"></div>
+          <div class="panel-end">
+            <span class="panel-status" id="right-status">Black's turn</span>
+            <button class="btn-new-game">New Game</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Game over overlay — two halves, one per player -->
+    <div id="overlay" class="hidden">
+      <div class="modal-half" id="modal-left">
+        <h2>Game Over</h2>
+        <div class="modal-scores">
+          <div class="modal-score-item">
+            <div class="piece black"></div>
+            <span id="left-final-black"></span>
+          </div>
+          <span class="modal-vs">vs</span>
+          <div class="modal-score-item">
+            <div class="piece white"></div>
+            <span id="left-final-white"></span>
+          </div>
+        </div>
+        <p class="winner-text" id="left-winner"></p>
+        <button class="btn-play-again">Play Again</button>
+      </div>
+
+      <div class="modal-half" id="modal-right">
+        <h2>Game Over</h2>
+        <div class="modal-scores">
+          <div class="modal-score-item">
+            <div class="piece black"></div>
+            <span id="right-final-black"></span>
+          </div>
+          <span class="modal-vs">vs</span>
+          <div class="modal-score-item">
+            <div class="piece white"></div>
+            <span id="right-final-white"></span>
+          </div>
+        </div>
+        <p class="winner-text" id="right-winner"></p>
+        <button class="btn-play-again">Play Again</button>
+      </div>
+    </div>
+
+    <!-- Startup overlay — shown before first game, hidden after Play -->
+    <div id="start-overlay">
+
+      <div class="start-modal" id="start-modal-left">
+        <p class="start-game-title">Wicked</p>
+        <p class="start-char-name">Elphaba</p>
+        <button class="btn-continue">Play</button>
+      </div>
+
+      <div class="start-modal" id="start-modal-right">
+        <p class="start-game-title">Wicked</p>
+        <p class="start-char-name">Glinda</p>
+        <button class="btn-continue">Play</button>
+      </div>
+
+    </div>
+
+    <!-- Floating piece that follows the pointer during drag -->
+    <div id="floating-piece" class="piece hidden"></div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

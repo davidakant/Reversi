@@ -1,0 +1,521 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+:root {
+  --frame-w:  1180px;
+  --frame-h:  820px;
+  --border:   14px;
+  --pad:      12px;
+  --gap:      8px;
+  --panel-w:  90px;
+
+  --panel-inner-w: calc(var(--frame-h) - 2 * var(--border) - 2 * var(--pad));
+  --board-size: calc(var(--panel-inner-w) - 16px);
+
+  --cell:  calc(var(--board-size) / 8);
+  --piece: calc(var(--cell) * 0.80);
+}
+
+/* ── Browser chrome ──────────────────────────────────────── */
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #111;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── iPad device frame ───────────────────────────────────── */
+
+#ipad-frame {
+  width: var(--frame-w);
+  height: var(--frame-h);
+  background: #0d1f12;
+  border-radius: 22px;
+  border: var(--border) solid #1e1e1e;
+  box-shadow:
+    0 0 0 2px #555,
+    0 0 0 3px #1e1e1e,
+    0 30px 80px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  transform-origin: center center;
+}
+
+/* ── App layout ──────────────────────────────────────────── */
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  padding: var(--pad);
+  gap: var(--gap);
+}
+
+/* ── Side player panels ───────────────────────────────────── */
+
+.player-panel {
+  width: var(--panel-w);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.panel-inner {
+  width: var(--panel-inner-w);
+  height: var(--panel-w);
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-radius: 12px;
+}
+
+/* Elphaba (left) — forest green panel */
+#panel-left .panel-inner {
+  transform: rotate(90deg);
+  background: rgba(27, 94, 32, 0.55);
+  border: 2px solid rgba(129, 199, 132, 0.45);
+}
+
+/* Glinda (right) — pink panel */
+#panel-right .panel-inner {
+  transform: rotate(-90deg);
+  background: rgba(173, 20, 87, 0.45);
+  border: 2px solid rgba(244, 143, 177, 0.50);
+}
+
+/* ── Piece holder ─────────────────────────────────────────── */
+
+.piece-slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--piece) + 14px);
+  height: calc(var(--piece) + 14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.piece-slot:not(:empty) {
+  pointer-events: auto;
+}
+
+/* ── Score items ──────────────────────────────────────────── */
+
+.panel-scores {
+  display: flex;
+  gap: 12px;
+}
+
+.score-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+/* Elphaba's score card active glow — forest green */
+#left-score-black.active,
+#right-score-black.active {
+  background: rgba(27, 94, 32, 0.22);
+  border-color: #81c784;
+  box-shadow: 0 0 12px rgba(129, 199, 132, 0.35);
+}
+
+/* Glinda's score card active glow — pink */
+#left-score-white.active,
+#right-score-white.active {
+  background: rgba(216, 27, 96, 0.18);
+  border-color: #f48fb1;
+  box-shadow: 0 0 12px rgba(244, 143, 177, 0.35);
+}
+
+.score-item .piece {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.score-num {
+  font-size: 26px;
+  font-weight: 700;
+  color: #e8f5e9;
+  min-width: 30px;
+  text-align: center;
+  line-height: 1;
+}
+
+.panel-end {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.panel-status {
+  font-size: 15px;
+  font-weight: 500;
+  color: #c8e6c9;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.panel-status.warning {
+  color: #ffee58;
+  font-weight: 700;
+}
+
+/* ── Board — Yellow Brick Road ───────────────────────────── */
+
+#board-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#board-inner {
+  padding: 8px;
+  background: #5a3e08;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7),
+              0 0 40px rgba(212, 168, 40, 0.18),
+              inset 0 1px rgba(255, 255, 255, 0.04);
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: var(--board-size);
+  height: var(--board-size);
+  gap: 2px;
+  background: #7a5a0a;
+}
+
+.cell {
+  background: linear-gradient(145deg, #f5e050 0%, #e8c830 50%, #c89820 100%);
+  box-shadow: inset 2px 2px 3px rgba(255, 248, 180, 0.55),
+              inset -2px -2px 3px rgba(80, 55, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  transition: box-shadow 0.1s;
+}
+
+.cell.drag-over {
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75);
+}
+
+/* ── Pieces ──────────────────────────────────────────────── */
+
+.piece {
+  width: var(--piece);
+  height: var(--piece);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Elphaba — forest green */
+.piece.black {
+  background: radial-gradient(circle at 38% 35%, #81c784, #1b5e20);
+  box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.6),
+              inset 0 1px 1px rgba(255, 255, 255, 0.18);
+}
+
+/* Glinda — pink */
+.piece.white {
+  background: radial-gradient(circle at 38% 35%, #f8bbd0, #d81b60);
+  box-shadow: 1px 2px 5px rgba(0, 0, 0, 0.4),
+              inset 0 1px 2px rgba(255, 255, 255, 0.55);
+}
+
+/* ── Draggable slot piece ────────────────────────────────── */
+
+.draggable-piece {
+  cursor: grab;
+  touch-action: none;
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 3px;
+}
+
+/* ── Floating piece (follows pointer during drag) ─────────── */
+
+#floating-piece {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#floating-piece.hidden {
+  display: none;
+}
+
+#ipad-frame.dragging * {
+  cursor: grabbing !important;
+}
+
+/* ── Valid move hints ────────────────────────────────────── */
+
+.hint {
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: rgba(70, 45, 0, 0.30);
+  pointer-events: none;
+}
+
+/* ── Piece animations ────────────────────────────────────── */
+
+.piece.place {
+  animation: piece-place 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.piece.flip {
+  animation: piece-flip 0.36s ease-in-out forwards;
+}
+
+@keyframes piece-place {
+  from { transform: scale(0.25); opacity: 0.5; }
+  to   { transform: scale(1);    opacity: 1;   }
+}
+
+@keyframes piece-flip {
+  0%   { transform: scaleX(1); }
+  40%  { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+
+button {
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  border: none;
+  border-radius: 8px;
+  background: #2e7d32;
+  color: #e8f5e9;
+  cursor: pointer;
+  touch-action: manipulation;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* Elphaba panel — green New Game */
+#panel-left .btn-new-game  { background: #2e7d32; }
+#panel-left .btn-new-game:active  { background: #1b5e20; }
+
+/* Glinda panel — pink New Game */
+#panel-right .btn-new-game { background: #c2185b; }
+#panel-right .btn-new-game:active { background: #880e4f; }
+
+/* ── Game over overlay ───────────────────────────────────── */
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 10;
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+.modal-half {
+  width: 420px;
+  padding: 22px 32px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+}
+
+/* Elphaba game-over modal */
+#modal-left {
+  transform: rotate(90deg);
+  background: rgba(15, 41, 20, 0.96);
+  border: 2px solid #81c784;
+}
+
+/* Glinda game-over modal */
+#modal-right {
+  transform: rotate(-90deg);
+  background: rgba(80, 10, 40, 0.96);
+  border: 2px solid #f48fb1;
+}
+
+.modal-half h2 {
+  font-size: 20px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #c8e6c9;
+}
+
+.modal-scores {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.modal-score-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-score-item .piece {
+  width: 36px;
+  height: 36px;
+}
+
+.modal-score-item span {
+  font-size: 32px;
+  font-weight: 700;
+  color: #e8f5e9;
+  min-width: 36px;
+}
+
+.modal-vs {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 300;
+}
+
+.winner-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffee58;
+}
+
+.modal-half button {
+  padding: 10px 28px;
+  font-size: 14px;
+}
+
+#modal-left  .btn-play-again { background: #2e7d32; }
+#modal-left  .btn-play-again:active { background: #1b5e20; }
+#modal-right .btn-play-again { background: #c2185b; }
+#modal-right .btn-play-again:active { background: #880e4f; }
+
+/* ── Startup overlay ─────────────────────────────────────── */
+
+#start-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.90);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 20;
+}
+
+#start-overlay.hidden {
+  display: none;
+}
+
+.start-modal {
+  width: 360px;
+  padding: 32px 36px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+}
+
+/* Elphaba start modal */
+#start-modal-left {
+  transform: rotate(90deg);
+  background: rgba(15, 41, 20, 0.95);
+  border: 2px solid #81c784;
+}
+
+/* Glinda start modal */
+#start-modal-right {
+  transform: rotate(-90deg);
+  background: rgba(80, 10, 40, 0.92);
+  border: 2px solid #f48fb1;
+}
+
+.start-game-title {
+  font-size: 38px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #e8f5e9;
+  line-height: 1;
+}
+
+.start-char-name {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
+.btn-continue {
+  padding: 12px 44px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+#start-modal-left  .btn-continue { background: #2e7d32; }
+#start-modal-left  .btn-continue:active { background: #1b5e20; }
+#start-modal-right .btn-continue { background: #c2185b; }
+#start-modal-right .btn-continue:active { background: #880e4f; }
