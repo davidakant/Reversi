@@ -176,9 +176,10 @@ function toFrameCoords(clientX, clientY) {
 }
 
 function updateSlots() {
+  const leftColor = elphabaOnLeft ? BLACK : WHITE;
   ['left', 'right'].forEach(side => {
     const slotEl = document.getElementById(`${side}-slot`);
-    const player = side === 'left' ? BLACK : WHITE;
+    const player = side === 'left' ? leftColor : (leftColor === BLACK ? WHITE : BLACK);
     slotEl.innerHTML = '';
 
     if (!gameActive || currentPlayer !== player) return;

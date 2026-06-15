@@ -915,6 +915,13 @@ button:active {
 #ipad-frame.glinda-left #panel-right .btn-new-game        { background: #2e7d32; }
 #ipad-frame.glinda-left #panel-right .btn-new-game:active  { background: #1b5e20; }
 
+/* When Glinda is on the left, her pink piece leads the left panel's
+   score display and Elphaba's green piece leads the right panel's */
+#ipad-frame.glinda-left #left-score-black  { order: 2; }
+#ipad-frame.glinda-left #left-score-white  { order: 1; }
+#ipad-frame.glinda-left #right-score-black { order: 1; }
+#ipad-frame.glinda-left #right-score-white { order: 2; }
+
 #ipad-frame.glinda-left #start-modal-left  { background: rgba(80, 10, 40, 0.92); border-color: #f48fb1; }
 #ipad-frame.glinda-left #start-modal-right { background: rgba(15, 41, 20, 0.95); border-color: #81c784; }
 
