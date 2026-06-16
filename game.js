@@ -197,10 +197,13 @@ function playerName(p) {
 function toFrameCoords(clientX, clientY) {
   const frame = document.getElementById('ipad-frame');
   const rect  = frame.getBoundingClientRect();
-  const scale = rect.width / 1180;
+  // After rotate(90deg): visual width = DOM height (820), visual height = DOM width (1180)
+  const s  = rect.width / 820;
+  const cx = rect.left + rect.width  / 2;
+  const cy = rect.top  + rect.height / 2;
   return {
-    x: (clientX - rect.left) / scale,
-    y: (clientY - rect.top)  / scale
+    x: 590 + (clientY - cy) / s,
+    y: 410 - (clientX - cx) / s,
   };
 }
 
@@ -1189,10 +1192,11 @@ function sfxElphabaVictory() {
 
 function scaleFrame() {
   const frame  = document.getElementById('ipad-frame');
-  const scaleX = (window.innerWidth  - 40) / 1180;
-  const scaleY = (window.innerHeight - 40) / 820;
+  // Rotated 90°: visual footprint is 820 wide × 1180 tall
+  const scaleX = (window.innerWidth  - 40) / 820;
+  const scaleY = (window.innerHeight - 40) / 1180;
   const scale  = Math.min(scaleX, scaleY, 1);
-  frame.style.transform = `scale(${scale})`;
+  frame.style.transform = `rotate(90deg) scale(${scale})`;
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

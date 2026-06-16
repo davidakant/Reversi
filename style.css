@@ -477,7 +477,7 @@ body {
   left: 0;
   top: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 100;
   will-change: transform;
 }
 
