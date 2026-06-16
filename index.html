@@ -53,7 +53,6 @@
           </svg>
           <div class="panel-end">
             <span class="panel-status" id="left-status">Black's turn</span>
-            <button class="btn-new-game">New Game</button>
           </div>
         </div>
       </div>
@@ -108,7 +107,6 @@
           </svg>
           <div class="panel-end">
             <span class="panel-status" id="right-status">Black's turn</span>
-            <button class="btn-new-game">New Game</button>
           </div>
         </div>
       </div>
@@ -118,7 +116,7 @@
     <!-- Game over overlay — two halves, one per player -->
     <div id="overlay" class="hidden">
       <div class="modal-half" id="modal-left">
-        <h2>Game Over</h2>
+        <p class="winner-text" id="left-winner"></p>
         <div class="modal-scores">
           <div class="modal-score-item">
             <div class="piece black"></div>
@@ -130,12 +128,14 @@
             <span id="left-final-white"></span>
           </div>
         </div>
-        <p class="winner-text" id="left-winner"></p>
-        <button class="btn-play-again">Play Again</button>
+        <div class="modal-btns">
+          <button class="btn-play-again">Play Again</button>
+          <button class="btn-gloat" disabled>Brag</button>
+        </div>
       </div>
 
       <div class="modal-half" id="modal-right">
-        <h2>Game Over</h2>
+        <p class="winner-text" id="right-winner"></p>
         <div class="modal-scores">
           <div class="modal-score-item">
             <div class="piece black"></div>
@@ -147,8 +147,10 @@
             <span id="right-final-white"></span>
           </div>
         </div>
-        <p class="winner-text" id="right-winner"></p>
-        <button class="btn-play-again">Play Again</button>
+        <div class="modal-btns">
+          <button class="btn-play-again">Play Again</button>
+          <button class="btn-gloat" disabled>Brag</button>
+        </div>
       </div>
     </div>
 
@@ -159,13 +161,16 @@
         <p class="start-game-title">Wicked</p>
         <p class="start-char-name">Elphaba</p>
         <div class="username-btns">
-          <button class="btn-username" data-name="LILY">LILY</button>
           <button class="btn-username" data-name="NORA">NORA</button>
+          <button class="btn-username" data-name="LILY">LILY</button>
           <button class="btn-username" data-name="GRANDPA">GRANDPA</button>
           <button class="btn-username" data-name="GRANDMA">GRANDMA</button>
+          <button class="btn-username" data-name="DANIEL">DANIEL</button>
+          <button class="btn-username" data-name="LAUREN">LAUREN</button>
+          <button class="btn-username" data-name="DAVID">DAVID</button>
+          <button class="btn-username btn-username-computer" data-name="COMPUTER">COMPUTER</button>
         </div>
         <button class="btn-continue" disabled>Play</button>
-        <button class="btn-ai-toggle" disabled>AUTO (EXPERIMENTAL)</button>
       </div>
 
       <!-- Randomize button — centered between the two modals -->
@@ -186,21 +191,16 @@
         <p class="start-game-title">Wicked</p>
         <p class="start-char-name">Glinda</p>
         <div class="username-btns">
-          <button class="btn-username" data-name="LILY">LILY</button>
           <button class="btn-username" data-name="NORA">NORA</button>
+          <button class="btn-username" data-name="LILY">LILY</button>
           <button class="btn-username" data-name="GRANDPA">GRANDPA</button>
           <button class="btn-username" data-name="GRANDMA">GRANDMA</button>
+          <button class="btn-username" data-name="DANIEL">DANIEL</button>
+          <button class="btn-username" data-name="LAUREN">LAUREN</button>
+          <button class="btn-username" data-name="DAVID">DAVID</button>
+          <button class="btn-username btn-username-computer" data-name="COMPUTER">COMPUTER</button>
         </div>
         <button class="btn-continue" disabled>Play</button>
-        <button class="btn-ai-toggle" disabled>AUTO (EXPERIMENTAL)</button>
-      </div>
-
-      <div id="unlock-panel">
-        <button class="unlock-btn" data-n="1">1</button>
-        <button class="unlock-btn" data-n="2">2</button>
-        <button class="unlock-btn" data-n="3">3</button>
-        <button class="unlock-btn" data-n="4">4</button>
-        <button class="unlock-btn" data-n="5">5</button>
       </div>
 
     </div>
@@ -208,6 +208,45 @@
     <!-- Floating piece that follows the pointer during drag -->
     <div id="floating-piece" class="piece hidden"></div>
 
+    <!-- Pause menu — shown on double-click of the board -->
+    <div id="quit-overlay" class="hidden">
+      <div class="quit-modal">
+        <p class="quit-text"></p>
+
+        <div class="quit-volume-row">
+          <button id="btn-music" class="audio-btn" title="Toggle music" aria-label="Toggle music">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/>
+              <circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+          <input type="range" id="music-slider" class="volume-slider" min="0" max="100" value="75">
+        </div>
+
+        <div class="quit-volume-row">
+          <button id="btn-sfx" class="audio-btn" title="Toggle sound effects" aria-label="Toggle sound effects">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <input type="range" id="sfx-slider" class="volume-slider" min="0" max="100" value="22">
+        </div>
+
+        <div class="quit-preview">
+          <button class="btn-preview btn-music-a">Music A</button>
+          <button class="btn-preview btn-music-b">Music B</button>
+          <button class="btn-preview btn-music-c">Music C</button>
+        </div>
+
+        <div class="quit-actions">
+          <button class="btn-start-over">Start Over</button>
+          <button class="btn-exit">Exit</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Corner flourishes at ipad-frame corners -->
     <svg id="corner-tl" class="corner-deco" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" aria-hidden="true">

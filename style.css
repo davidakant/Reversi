@@ -89,7 +89,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow 0.35s;
 }
 
@@ -202,8 +202,10 @@ body {
 
 .panel-icon {
   position: absolute;
-  left: 450px;
+  left: 508px;
   top: 50%;
+  width: 240px;
+  height: 80px;
   transform: translateY(-50%);
   pointer-events: none;
 }
@@ -366,6 +368,7 @@ body {
 }
 
 .cell {
+  position: relative;
   background-image:
     linear-gradient(145deg, #f5e050 0%, #e8c830 50%, #c89820 100%);
   box-shadow: inset 2px 2px 3px rgba(255, 248, 180, 0.55),
@@ -381,6 +384,48 @@ body {
 
 .cell.drag-over {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.75);
+}
+
+.cell.flash-yellow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, #FFFFFF 0%, #FFEB3B 45%, rgba(255, 235, 59, 0) 100%);
+  opacity: 0;
+  pointer-events: none;
+  animation: cell-flash-yellow 1.1s ease-out;
+  animation-delay: var(--flash-delay, 0ms);
+}
+
+@keyframes cell-flash-yellow {
+  0%   { opacity: 0;    box-shadow: 0 0 0 0 rgba(255, 255, 120, 0);    transform: scale(0.85); }
+  10%  { opacity: 1;    box-shadow: 0 0 26px 10px rgba(255, 255, 120, 0.95); transform: scale(1.15); }
+  55%  { opacity: 0.9;  box-shadow: 0 0 18px 6px rgba(255, 255, 120, 0.6); transform: scale(1); }
+  100% { opacity: 0;    box-shadow: 0 0 0 0 rgba(255, 255, 120, 0);    transform: scale(1); }
+}
+
+/* Circular glow matching each piece involved in the move (placed +
+   captured) — lives on the cell so it isn't squashed by the piece's
+   own flip/place transform animation. */
+.cell.piece-glow::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--piece) / 2);
+  top: calc(50% - var(--piece) / 2);
+  width: var(--piece);
+  height: var(--piece);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: piece-glow-yellow 1.1s ease-out;
+  animation-delay: var(--flash-delay, 0ms);
+}
+
+@keyframes piece-glow-yellow {
+  0%   { opacity: 0;    box-shadow: 0 0 0 0 rgba(255, 255, 120, 0); }
+  10%  { opacity: 1;    box-shadow: 0 0 22px 10px rgba(255, 255, 120, 0.95); }
+  55%  { opacity: 0.9;  box-shadow: 0 0 16px 6px rgba(255, 255, 120, 0.6); }
+  100% { opacity: 0;    box-shadow: 0 0 0 0 rgba(255, 255, 120, 0); }
 }
 
 #ipad-frame.dragging .hint {
@@ -417,6 +462,12 @@ body {
   touch-action: none;
   outline: 2px solid rgba(255, 255, 255, 0.35);
   outline-offset: 3px;
+  animation: turn-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes turn-shimmer {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 215, 0, 0)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.95)); }
 }
 
 /* ── Floating piece (follows pointer during drag) ─────────── */
@@ -488,14 +539,6 @@ button:active {
   transform: scale(0.97);
 }
 
-/* Elphaba panel — green New Game */
-#panel-left .btn-new-game  { background: #2e7d32; }
-#panel-left .btn-new-game:active  { background: #1b5e20; }
-
-/* Glinda panel — pink New Game */
-#panel-right .btn-new-game { background: #c2185b; }
-#panel-right .btn-new-game:active { background: #880e4f; }
-
 /* ── Game over overlay ───────────────────────────────────── */
 
 #overlay {
@@ -540,13 +583,6 @@ button:active {
   border: 2px solid #f48fb1;
 }
 
-.modal-half h2 {
-  font-size: 20px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: #c8e6c9;
-}
-
 .modal-scores {
   display: flex;
   align-items: center;
@@ -578,14 +614,40 @@ button:active {
 }
 
 .winner-text {
-  font-size: 16px;
+  font-size: 28px;
   font-weight: 700;
+  letter-spacing: 2px;
   color: #ffee58;
+  text-align: center;
+}
+
+.modal-btns {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .modal-half button {
   padding: 10px 28px;
   font-size: 14px;
+}
+
+.btn-gloat {
+  background: rgba(90, 65, 0, 0.8);
+  border: 1px solid rgba(220, 175, 50, 0.55);
+  color: rgba(255, 215, 70, 0.9);
+}
+
+.btn-gloat:hover:not(:disabled) {
+  background: rgba(120, 90, 0, 0.9);
+  border-color: rgba(255, 215, 70, 0.8);
+  color: #ffe033;
+}
+
+.btn-gloat:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 #modal-left  .btn-play-again { background: #2e7d32; }
@@ -596,6 +658,149 @@ button:active {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 14px rgba(255, 255, 255, 0.4);
 }
 #modal-right .btn-play-again:active { background: #880e4f; }
+
+/* ── Quit confirmation overlay ───────────────────────────── */
+
+#quit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 15;
+}
+
+#quit-overlay.hidden {
+  display: none;
+}
+
+.quit-modal {
+  width: 460px;
+  padding: 24px 32px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  background: rgba(20, 16, 8, 0.94);
+  border: 2px solid #D4A017;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+}
+
+#quit-overlay.rotate-left  .quit-modal { transform: rotate(90deg); }
+#quit-overlay.rotate-right .quit-modal { transform: rotate(-90deg); }
+
+.quit-text {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-align: center;
+  color: #FFF8E1;
+  margin-bottom: 4px;
+}
+
+.quit-volume-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.volume-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(212, 168, 40, 0.25);
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd700;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(212, 168, 40, 0.6);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd700;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 6px rgba(212, 168, 40, 0.6);
+}
+
+.quit-preview {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-preview {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  color: #fff;
+}
+
+.btn-music-a,
+.btn-music-b,
+.btn-music-c {
+  background: rgba(140, 100, 10, 0.35);
+  border-color: rgba(212, 168, 40, 0.45);
+}
+.btn-music-a:active,
+.btn-music-b:active,
+.btn-music-c:active { background: rgba(140, 100, 10, 0.65); }
+
+.btn-music-a.active,
+.btn-music-b.active,
+.btn-music-c.active {
+  background: rgba(180, 130, 10, 0.60);
+  border-color: #ffd700;
+  box-shadow: 0 0 8px rgba(212, 168, 40, 0.55);
+}
+
+.quit-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.quit-actions button {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+
+.btn-start-over { background: #2e7d32; }
+.btn-start-over:active { background: #1b5e20; }
+
+.btn-exit { background: #c2185b; }
+.btn-exit:active { background: #880e4f; }
 
 /* ── Startup overlay ─────────────────────────────────────── */
 
@@ -721,6 +926,12 @@ button:active {
   box-shadow: 0 0 10px rgba(67, 160, 71, 0.60);
 }
 
+.btn-username-computer {
+  border-color: rgba(180, 140, 60, 0.5);
+  color: rgba(220, 180, 80, 0.85);
+  letter-spacing: 1.5px;
+}
+
 .btn-continue {
   margin-top: 20px;
   padding: 12px 44px;
@@ -746,71 +957,6 @@ button:active {
 #start-modal-left  .btn-continue:active { background: #1b5e20; }
 #start-modal-right .btn-continue { background: #c2185b; }
 #start-modal-right .btn-continue:active { background: #880e4f; }
-
-/* ── AI toggle button ────────────────────────────────────── */
-
-.btn-ai-toggle {
-  width: 100%;
-  padding: 8px 16px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  border-radius: 8px;
-  border: 2px solid rgba(212, 168, 40, 0.35);
-  background: rgba(212, 168, 40, 0.07);
-  color: rgba(212, 168, 40, 0.6);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
-}
-
-.btn-ai-toggle:hover {
-  border-color: rgba(212, 168, 40, 0.65);
-  background: rgba(212, 168, 40, 0.14);
-  color: #D4A017;
-}
-
-.btn-ai-toggle:disabled {
-  opacity: 0.15;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.btn-ai-toggle.selected {
-  border-color: #D4A017;
-  background: rgba(212, 168, 40, 0.22);
-  color: #FFD700;
-  box-shadow: 0 0 14px rgba(212, 168, 40, 0.5);
-}
-
-#unlock-panel {
-  position: absolute;
-  bottom: 22px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-}
-
-.unlock-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.22);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.1s, background 0.1s, color 0.1s, box-shadow 0.1s;
-}
-
-.unlock-btn.lit {
-  border-color: #D4A017;
-  background: rgba(212, 168, 40, 0.28);
-  color: #FFD700;
-  box-shadow: 0 0 10px rgba(212, 168, 40, 0.65);
-}
 
 /* ── Randomize button ────────────────────────────────────── */
 
@@ -843,8 +989,8 @@ button:active {
 
 #randomize-btn svg {
   display: block;
-  width: 158px;
-  height: 158px;
+  width: 90px;
+  height: 90px;
 }
 
 /* ── Character orbit tokens ──────────────────────────────── */
@@ -905,15 +1051,11 @@ button:active {
 #panel-right.active .panel-inner {
   border-color: #ffd700 !important;
   box-shadow:
-    0 0 12px rgba(255, 215,   0, 1.00),
-    0 0 28px rgba(255, 200,   0, 0.70),
-    0 0 52px rgba(255, 170,   0, 0.35);
+    0 0 20px rgba(255, 215,   0, 1.00),
+    0 0 48px rgba(255, 200,   0, 0.70),
+    0 0 90px rgba(255, 170,   0, 0.40),
+    0 0 150px rgba(255, 150,   0, 0.20);
 }
-
-#ipad-frame.glinda-left #panel-left  .btn-new-game        { background: #c2185b; }
-#ipad-frame.glinda-left #panel-left  .btn-new-game:active  { background: #880e4f; }
-#ipad-frame.glinda-left #panel-right .btn-new-game        { background: #2e7d32; }
-#ipad-frame.glinda-left #panel-right .btn-new-game:active  { background: #1b5e20; }
 
 /* When Glinda is on the left, her pink piece leads the left panel's
    score display and Elphaba's green piece leads the right panel's */
@@ -937,6 +1079,102 @@ button:active {
 #ipad-frame.glinda-left #modal-left  .btn-play-again:active  { background: #880e4f; }
 #ipad-frame.glinda-left #modal-right .btn-play-again        { background: #2e7d32; }
 #ipad-frame.glinda-left #modal-right .btn-play-again:active  { background: #1b5e20; }
+
+/* ── Victory celebration particles ───────────────────────── */
+
+.victory-bubble {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9;
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgba(255, 255, 255, 0.95)  0%,
+    rgba(255, 220, 255, 0.80) 18%,
+    rgba(210, 220, 255, 0.55) 42%,
+    rgba(230, 255, 250, 0.22) 66%,
+    transparent 82%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 3px 4px 8px rgba(255, 255, 255, 0.80),
+    inset -1px -2px 4px rgba(220, 180, 255, 0.35),
+    0 0 10px rgba(255, 200, 255, 0.20);
+}
+
+.victory-flame {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9;
+  border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%;
+  background: radial-gradient(
+    ellipse at 50% 88%,
+    rgba(255, 248, 100, 1.00)  0%,
+    rgba(255, 140, 18,  0.92) 34%,
+    rgba(210, 48,  0,   0.78) 66%,
+    transparent 100%
+  );
+}
+
+.victory-smoke {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9;
+  background: radial-gradient(
+    circle,
+    rgba(55,  175, 55,  0.52)  0%,
+    rgba(25,  100, 25,  0.32) 52%,
+    transparent 76%
+  );
+}
+
+/* ── Audio controls ───────────────────────────────────────── */
+
+.audio-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(10, 24, 14, 0.80);
+  border: 1.5px solid rgba(212, 168, 40, 0.50);
+  color: rgba(212, 168, 40, 0.80);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.audio-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: opacity 0.2s;
+}
+
+.audio-btn:hover {
+  border-color: rgba(212, 168, 40, 0.95);
+  color: #ffd700;
+  box-shadow: 0 0 10px rgba(212, 168, 40, 0.45);
+}
+
+.audio-btn.muted {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.audio-btn.muted::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.55);
+  transform: translate(-50%, -50%) rotate(-45deg);
+  pointer-events: none;
+}
 
 /* ── Cell placement shimmer ─────────────────────────────── */
 

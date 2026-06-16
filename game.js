@@ -14,10 +14,9 @@ let board, currentPlayer, gameActive, cells;
 let dragActive = false, dragPlayer = null;
 let dragFrameX = 0, dragFrameY = 0, lastDragMoveTime = 0, bubbleLoopId = null, embersLoopId = null;
 let elphabaOnLeft = true, isAnimating = false;
+let gloatUsesLeft = 0, _gloatText = '';
 let hintsVisible = false;
 const selectedUsers = { left: null, right: null };
-const UNLOCK_SEQ = [1, 3, 5, 4, 2];
-let unlockProgress = [];
 
 function updateUsernameUI() {
   ['left', 'right'].forEach(side => {
@@ -27,7 +26,6 @@ function updateUsernameUI() {
       btn.classList.toggle('selected', selectedUsers[side] === btn.dataset.name);
       btn.disabled = selectedUsers[other] === btn.dataset.name;
     });
-    modal.querySelector('.btn-ai-toggle').classList.toggle('selected', selectedUsers[side] === 'AI');
     const playBtn = modal.querySelector('.btn-continue');
     playBtn.disabled = !selectedUsers[side];
     if (!selectedUsers[side]) playBtn.classList.remove('ready');
@@ -37,7 +35,7 @@ function updateUsernameUI() {
 function isAiTurn() {
   const leftColor = elphabaOnLeft ? BLACK : WHITE;
   const side = currentPlayer === leftColor ? 'left' : 'right';
-  return selectedUsers[side] === 'AI';
+  return selectedUsers[side] === 'COMPUTER';
 }
 
 // ── Board logic ───────────────────────────────────────────────────────────────
@@ -66,6 +64,25 @@ function getFlips(b, row, col, player) {
     }
   }
   return result;
+}
+
+// Builds the outward-rippling order of cells affected by a move: the
+// placed cell (step 0), then each flipped cell and its anchor, numbered
+// by distance along their line — used to stagger the flip/shimmer effects.
+function getStaggerInfo(row, col, flips) {
+  const flipSet = new Set(flips.map(([r, c]) => `${r},${c}`));
+  const info = [{ row, col, step: 0 }];
+  for (const [dr, dc] of DIRS) {
+    let r = row + dr, c = col + dc;
+    if (!flipSet.has(`${r},${c}`)) continue;
+    let step = 1;
+    while (flipSet.has(`${r},${c}`)) {
+      info.push({ row: r, col: c, step });
+      r += dr; c += dc; step++;
+    }
+    info.push({ row: r, col: c, step });
+  }
+  return info;
 }
 
 function getValidMoves(b, player) {
@@ -101,12 +118,19 @@ function buildGrid() {
   );
 }
 
-function refreshBoard(flipped = [], placed = null) {
+function refreshBoard(flipped = [], placed = null, stagger = null) {
   const validSet = (gameActive && hintsVisible)
     ? new Set(getValidMoves(board, currentPlayer).map(([r, c]) => `${r},${c}`))
     : new Set();
   const flipSet  = new Set(flipped.map(([r, c]) => `${r},${c}`));
   const placeKey = placed ? `${placed[0]},${placed[1]}` : null;
+
+  const flipDelay = new Map();
+  if (stagger) {
+    stagger.forEach(({ row, col, step }) => {
+      if (step > 0) flipDelay.set(`${row},${col}`, step);
+    });
+  }
 
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
@@ -118,8 +142,11 @@ function refreshBoard(flipped = [], placed = null) {
       if (val !== EMPTY) {
         const piece = document.createElement('div');
         piece.className = 'piece ' + (val === BLACK ? 'black' : 'white');
-        if (flipSet.has(key))      piece.classList.add('flip');
-        else if (key === placeKey) piece.classList.add('place');
+        if (flipSet.has(key)) {
+          piece.classList.add('flip');
+          const step = flipDelay.get(key);
+          if (step) piece.style.animationDelay = `${step * STAGGER_STEP_MS}ms`;
+        } else if (key === placeKey) piece.classList.add('place');
         cell.appendChild(piece);
       } else if (validSet.has(key)) {
         const hint = document.createElement('div');
@@ -286,9 +313,13 @@ function endDrag(e, slotEl) {
         if (currentPlayer === WHITE) spawnGlindaBubbles(row, col);
         else                         spawnElphabaEffect(row, col);
         spawnCellShimmer(row, col);
-        advanceTurn(flips, [row, col]);
+        const stagger = getStaggerInfo(row, col, flips);
+        flashCells(stagger);
+        playSfxMove(stagger, flips, [row, col]);
+        advanceTurn(flips, [row, col], stagger);
         return;
       }
+      sfxInvalid();
     }
   }
 
@@ -543,6 +574,25 @@ function stopDragEmbers() {
   }
 }
 
+const STAGGER_STEP_MS  = 120;
+const FLASH_DURATION_MS = 1100;
+
+function flashCells(stagger) {
+  stagger.forEach(({ row, col, step }) => {
+    const cell  = cells[row][col];
+    const delay = step * STAGGER_STEP_MS;
+    cell.style.setProperty('--flash-delay', `${delay}ms`);
+    cell.classList.add('flash-yellow');
+    cell.classList.remove('piece-glow');
+    void cell.offsetWidth;
+    cell.classList.add('piece-glow');
+    setTimeout(() => {
+      cell.classList.remove('flash-yellow', 'piece-glow');
+      cell.style.removeProperty('--flash-delay');
+    }, delay + FLASH_DURATION_MS);
+  });
+}
+
 function spawnCellShimmer(row, col) {
   const frame = document.getElementById('ipad-frame');
   const cell  = cells[row][col];
@@ -647,7 +697,10 @@ function scheduleAiMove() {
     if (currentPlayer === WHITE) spawnGlindaBubbles(row, col);
     else                         spawnElphabaEffect(row, col);
     spawnCellShimmer(row, col);
-    advanceTurn(flips, [row, col]);
+    const stagger = getStaggerInfo(row, col, flips);
+    flashCells(stagger);
+    playSfxMove(stagger, flips, [row, col]);
+    advanceTurn(flips, [row, col], stagger);
   }, 700);
 }
 
@@ -740,6 +793,7 @@ function newGame() {
   board         = createBoard();
   currentPlayer = BLACK;
   gameActive    = true;
+  startMusic();
   document.getElementById('overlay').classList.add('hidden');
   buildGrid();
   refreshBoard();
@@ -749,7 +803,7 @@ function newGame() {
   if (isAiTurn()) scheduleAiMove();
 }
 
-function advanceTurn(flips, placed) {
+function advanceTurn(flips, placed, stagger) {
   const next      = currentPlayer === BLACK ? WHITE : BLACK;
   const nextMoves = getValidMoves(board, next);
   const currMoves = getValidMoves(board, currentPlayer);
@@ -757,33 +811,44 @@ function advanceTurn(flips, placed) {
   if (nextMoves.length > 0) {
     currentPlayer = next;
     triggerBevelSpin();
-    refreshBoard(flips, placed);
+    refreshBoard(flips, placed, stagger);
     updatePanels();
     updateSlots();
     setStatus(`${playerName(currentPlayer)}'s turn`);
+    setTimeout(sfxTurnChange, 480);
     if (isAiTurn()) scheduleAiMove();
   } else if (currMoves.length > 0) {
-    refreshBoard(flips, placed);
+    refreshBoard(flips, placed, stagger);
     updatePanels();
     updateSlots();
     setStatus(`${playerName(next)} has no moves — ${playerName(currentPlayer)} plays again`, true);
     if (isAiTurn()) scheduleAiMove();
   } else {
     gameActive = false;
-    refreshBoard(flips, placed);
+    refreshBoard(flips, placed, stagger);
     updatePanels();
     updateSlots();
     setStatus('Game over');
-    setTimeout(showGameOver, 500);
+    const { black, white } = countPieces(board);
+    if (white > black) {
+      spawnGlindaVictory();
+      setTimeout(showGameOver, 4200);
+    } else if (black > white) {
+      spawnElphabaVictory();
+      setTimeout(showGameOver, 4200);
+    } else {
+      setTimeout(sfxGameOver, 650);
+      setTimeout(showGameOver, 600);
+    }
   }
 }
 
 function showGameOver() {
   const { black, white } = countPieces(board);
   let msg;
-  if      (black > white) msg = `${playerName(BLACK)} wins!`;
-  else if (white > black) msg = `${playerName(WHITE)} wins!`;
-  else                    msg = "It's a tie!";
+  if      (black > white) msg = `${playerName(BLACK)} Wins!`;
+  else if (white > black) msg = `${playerName(WHITE)} Wins!`;
+  else                    msg = "It's a Tie!";
 
   ['left', 'right'].forEach(p => {
     document.getElementById(`${p}-final-black`).textContent = black;
@@ -794,12 +859,320 @@ function showGameOver() {
   document.getElementById('overlay').classList.remove('hidden');
 
   document.querySelectorAll('.btn-play-again').forEach(b => b.classList.remove('ready'));
-  ['left', 'right'].forEach(side => {
-    if (selectedUsers[side] === 'AI')
-      document.querySelector(`#modal-${side} .btn-play-again`).classList.add('ready');
+
+  // Gloat button: active only on winner's side, 3 uses
+  gloatUsesLeft = 0;
+  _gloatText = '';
+  document.querySelectorAll('.btn-gloat').forEach(b => { b.disabled = true; });
+
+  let winnerSide = null;
+  if (black > white) {
+    _gloatText = 'Elphaba wins. Haahaa!';
+    winnerSide = elphabaOnLeft ? 'left' : 'right';
+  } else if (white > black) {
+    _gloatText = 'Glinda wins. Haahaa!';
+    winnerSide = elphabaOnLeft ? 'right' : 'left';
+  }
+  if (winnerSide) {
+    gloatUsesLeft = 3;
+    document.querySelector(`#modal-${winnerSide} .btn-gloat`).disabled = false;
+  }
+}
+
+// ── Audio ─────────────────────────────────────────────────────────────────────
+
+let musicEnabled = true;
+let sfxEnabled   = true;
+let _audioCtx    = null;
+let _musicAudio = null;   // HTMLAudioElement currently playing
+let _musicTrack = 'a';   // 'a' | 'b'
+
+let MUSIC_VOL = 0.75;
+let SFX_VOL   = 0.22;
+
+const MUSIC_FILES = { a: 'music-a.mp3', b: 'music-b.mp3', c: 'music-c.mp3' };
+
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function startMusic() {
+  if (!musicEnabled) return;
+  if (_musicAudio && !_musicAudio.paused) return;
+  if (!_musicAudio) {
+    _musicAudio        = new Audio(MUSIC_FILES[_musicTrack]);
+    _musicAudio.volume = MUSIC_VOL;
+    _musicAudio.addEventListener('ended', () => {
+      const order = ['a', 'b', 'c'];
+      switchMusicTrack(order[(order.indexOf(_musicTrack) + 1) % order.length]);
+    });
+  }
+  _musicAudio.play().catch(() => {});
+}
+
+function stopMusic() {
+  if (!_musicAudio) return;
+  _musicAudio.pause();
+  _musicAudio.currentTime = 0;
+}
+
+function switchMusicTrack(track) {
+  _musicTrack = track;
+  const wasPlaying = _musicAudio && (!_musicAudio.paused || _musicAudio.ended);
+  if (_musicAudio) { _musicAudio.pause(); _musicAudio = null; }
+  if (wasPlaying && musicEnabled) startMusic();
+  document.querySelector('.btn-music-a').classList.toggle('active', track === 'a');
+  document.querySelector('.btn-music-b').classList.toggle('active', track === 'b');
+  document.querySelector('.btn-music-c').classList.toggle('active', track === 'c');
+  saveAudioPrefs();
+}
+
+function saveAudioPrefs() {
+  localStorage.setItem('reversi_musicEnabled', musicEnabled);
+  localStorage.setItem('reversi_sfxEnabled',   sfxEnabled);
+  localStorage.setItem('reversi_musicVol',     MUSIC_VOL);
+  localStorage.setItem('reversi_sfxVol',       SFX_VOL);
+  localStorage.setItem('reversi_musicTrack',   _musicTrack);
+}
+
+function toggleMusic() {
+  musicEnabled = !musicEnabled;
+  document.getElementById('btn-music').classList.toggle('muted', !musicEnabled);
+  if (musicEnabled) startMusic();
+  else if (_musicAudio) _musicAudio.pause();
+  saveAudioPrefs();
+}
+
+// ── SFX ───────────────────────────────────────────────────────────────────────
+
+function sfxFlip(delayMs = 0) {
+  if (!sfxEnabled) return;
+  const ctx = getAudioCtx();
+  const t   = ctx.currentTime + delayMs / 1000;
+
+  // Mario coin: square wave jumps B5 → E6 after 45ms, fast decay
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(988.0,  t);
+  osc.frequency.setValueAtTime(1319.0, t + 0.045);
+  gain.gain.setValueAtTime(SFX_VOL * 0.45, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.10);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.12);
+}
+
+function sfxInvalid() {
+  if (!sfxEnabled) return;
+  const ctx = getAudioCtx();
+  const t   = ctx.currentTime;
+
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(160, t);
+  osc.frequency.exponentialRampToValueAtTime(80, t + 0.10);
+  gain.gain.setValueAtTime(SFX_VOL * 0.40, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.13);
+}
+
+function sfxTurnChange() {
+  if (!sfxEnabled) return;
+  const ctx = getAudioCtx();
+  const t   = ctx.currentTime;
+
+  [523.25, 783.99].forEach((freq, i) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const ts   = t + i * 0.13;
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ts);
+    gain.gain.linearRampToValueAtTime(SFX_VOL * 0.55, ts + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ts + 0.38);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ts);
+    osc.stop(ts + 0.42);
   });
-  if (document.querySelectorAll('.btn-play-again.ready').length === 2)
-    setTimeout(() => { document.querySelectorAll('.btn-play-again').forEach(b => b.classList.remove('ready')); newGame(); }, 1500);
+}
+
+function sfxGameOver() {
+  if (!sfxEnabled) return;
+  const ctx = getAudioCtx();
+  const t   = ctx.currentTime;
+
+  [392, 523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const ts   = t + i * 0.19;
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ts);
+    gain.gain.linearRampToValueAtTime(SFX_VOL * 0.75, ts + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, ts + 0.9);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ts);
+    osc.stop(ts + 1.0);
+  });
+}
+
+// Schedule a flip swoosh for each piece in the move (placed + flipped, not anchors).
+function playSfxMove(stagger, flips, placed) {
+  if (!sfxEnabled) return;
+  const moveKeys = new Set([...flips, placed].map(([r, c]) => `${r},${c}`));
+  stagger
+    .filter(({ row, col }) => moveKeys.has(`${row},${col}`))
+    .forEach(({ step }) => sfxFlip(step * STAGGER_STEP_MS));
+}
+
+function toggleSfx() {
+  sfxEnabled = !sfxEnabled;
+  document.getElementById('btn-sfx').classList.toggle('muted', !sfxEnabled);
+  saveAudioPrefs();
+}
+
+// ── Victory celebrations ───────────────────────────────────────────────────────
+
+// side: 'left' | 'right' — which panel the winner occupies
+function spawnVictoryBubble(frame, delayMs, side) {
+  setTimeout(() => {
+    const b      = document.createElement('div');
+    b.className  = 'victory-bubble';
+    const size   = 22 + Math.random() * 58;
+    const y      = 40 + Math.random() * 740;
+    const travel = 820 + Math.random() * 300;
+    const riseY  = (Math.random() - 0.4) * 220;
+    const tx     = side === 'left' ? travel : -travel;
+    const startX = side === 'left' ? (Math.random() * 70 - size) : (1180 - Math.random() * 70);
+    const dur    = 2000 + Math.random() * 1800;
+    const hue    = Math.random() * 360;
+    b.style.cssText = `width:${size}px;height:${size}px;left:${startX}px;top:${y}px;`;
+    frame.appendChild(b);
+    const anim = b.animate([
+      { transform: 'translate(0,0) scale(0.15)',                                                      opacity: 0,   filter: `hue-rotate(${hue}deg)` },
+      { transform: `translate(${tx*.06}px,${-riseY*.06}px) scale(1)`,                                opacity: 0.9, filter: `hue-rotate(${hue+80}deg)`,  offset: 0.09 },
+      { transform: `translate(${tx*.5}px,${-riseY*.5}px) scale(0.92)`,                               opacity: 0.8, filter: `hue-rotate(${hue+200}deg)`, offset: 0.55 },
+      { transform: `translate(${tx}px,${-riseY}px) scale(0.65)`,                                     opacity: 0,   filter: `hue-rotate(${hue+360}deg)` },
+    ], { duration: dur, easing: 'ease-out', fill: 'forwards' });
+    anim.onfinish = () => b.remove();
+  }, delayMs);
+}
+
+// Flames rotate 90° CW and flicker in place at Elphaba's panel edge.
+// transform-origin: 50% 100% pins the hot base to the wall; the tip licks inward.
+function spawnVictoryFlame(frame, side) {
+  const f   = document.createElement('div');
+  f.className = 'victory-flame';
+  const w   = 20 + Math.random() * 45;          // thickness (vertical on screen)
+  const h   = 50 + Math.random() * 180;         // length (horizontal on screen)
+  const y   = 30 + Math.random() * 760;
+  const rot = side === 'left' ? 90 : -90;
+  const dur = 400 + Math.random() * 600;
+
+  // Pin the base (transform-origin 50% 100%) to the panel wall
+  const left = side === 'left' ? -w / 2 : 1180 - w / 2;
+  const top  = y - h;
+
+  f.style.cssText = `width:${w}px;height:${h}px;left:${left}px;top:${top}px;transform-origin:50% 100%;`;
+  frame.appendChild(f);
+
+  const pk  = (0.65 + Math.random() * 0.35).toFixed(2);   // peak length
+  const d1  = (0.45 + Math.random() * 0.30).toFixed(2);   // dip
+  const pk2 = (0.55 + Math.random() * 0.35).toFixed(2);   // secondary peak
+  const xw  = (0.75 + Math.random() * 0.25).toFixed(2);   // width pulse
+
+  const anim = f.animate([
+    { transform: `rotate(${rot}deg) scaleY(0.05) scaleX(0.3)`,    opacity: 0   },
+    { transform: `rotate(${rot}deg) scaleY(${pk})  scaleX(1)`,    opacity: 1,   offset: 0.18 },
+    { transform: `rotate(${rot}deg) scaleY(${d1})  scaleX(${xw})`,opacity: 0.8, offset: 0.44 },
+    { transform: `rotate(${rot}deg) scaleY(${pk2}) scaleX(0.9)`,  opacity: 0.9, offset: 0.70 },
+    { transform: `rotate(${rot}deg) scaleY(0.1)   scaleX(0.4)`,   opacity: 0   },
+  ], { duration: dur, easing: 'ease-in-out', fill: 'forwards' });
+  anim.onfinish = () => f.remove();
+}
+
+// Smoke starts at Elphaba's panel edge and travels horizontally toward Glinda's side,
+// with a gentle upward drift as it expands.
+function spawnVictorySmoke(frame, side) {
+  const s      = document.createElement('div');
+  s.className  = 'victory-smoke';
+  const size   = 45 + Math.random() * 80;
+  const y      = 50 + Math.random() * 720;
+  const travel = 600 + Math.random() * 400;
+  const riseY  = 60 + Math.random() * 180;
+  const tx     = side === 'left' ? travel : -travel;
+  const startX = side === 'left' ? (-size + Math.random() * 30) : (1180 - Math.random() * 30);
+  const dur    = 2800 + Math.random() * 1800;
+  const delay  = Math.random() * 400;
+  s.style.cssText = `width:${size}px;height:${size}px;left:${startX}px;top:${y}px;`;
+  frame.appendChild(s);
+  const anim = s.animate([
+    { transform: 'translate(0,0) scale(0.25)',                                                   opacity: 0   },
+    { transform: `translate(${tx*.08}px,${-riseY*.08}px) scale(0.85)`,                          opacity: 0.6, offset: 0.14 },
+    { transform: `translate(${tx*.5}px,${-riseY*.5}px) scale(1.4)`,                             opacity: 0.4, offset: 0.6  },
+    { transform: `translate(${tx}px,${-riseY}px) scale(2.2)`,                                   opacity: 0   },
+  ], { duration: dur, delay, easing: 'ease-out', fill: 'forwards' });
+  anim.onfinish = () => s.remove();
+}
+
+function spawnGlindaVictory() {
+  const frame = document.getElementById('ipad-frame');
+  const side  = elphabaOnLeft ? 'right' : 'left';  // Glinda's panel side
+  for (let i = 0; i < 18; i++) spawnVictoryBubble(frame, Math.random() * 600, side);
+  const end = Date.now() + 4000;
+  const id  = setInterval(() => {
+    if (Date.now() >= end) { clearInterval(id); return; }
+    for (let i = 0; i < 4; i++) spawnVictoryBubble(frame, Math.random() * 80, side);
+  }, 90);
+  sfxGlindaVictory();
+}
+
+function spawnElphabaVictory() {
+  const frame = document.getElementById('ipad-frame');
+  const side  = elphabaOnLeft ? 'left' : 'right';  // Elphaba's side — smoke drifts opposite
+  const end   = Date.now() + 4000;
+  const id    = setInterval(() => {
+    if (Date.now() >= end) { clearInterval(id); return; }
+    for (let i = 0; i < 5; i++) spawnVictoryFlame(frame, side);
+    for (let i = 0; i < 4; i++) spawnVictorySmoke(frame, side);
+  }, 75);
+  sfxElphabaVictory();
+}
+
+function sfxGlindaVictory() {
+  if (!sfxEnabled) return;
+  const ctx   = getAudioCtx();
+  const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98]; // C5–G6
+  [0, 1.3, 2.7].forEach((offset, wave) => {
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t    = ctx.currentTime + offset + i * 0.13;
+      osc.type   = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(SFX_VOL * (0.5 - wave * 0.06), t + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.75);
+    });
+  });
+}
+
+function sfxElphabaVictory() {
+  sfxGlindaVictory();
 }
 
 // ── Scale frame to fit browser window ────────────────────────────────────────
@@ -815,6 +1188,25 @@ function scaleFrame() {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore saved audio preferences
+  const sm = localStorage.getItem('reversi_musicEnabled');
+  const ss = localStorage.getItem('reversi_sfxEnabled');
+  const mv = localStorage.getItem('reversi_musicVol');
+  const sv = localStorage.getItem('reversi_sfxVol');
+  const st = localStorage.getItem('reversi_musicTrack');
+  if (sm !== null) musicEnabled = sm === 'true';
+  if (ss !== null) sfxEnabled   = ss === 'true';
+  if (mv !== null) MUSIC_VOL    = parseFloat(mv);
+  if (sv !== null) SFX_VOL      = parseFloat(sv);
+  if (st !== null) _musicTrack  = st;
+  document.getElementById('btn-music').classList.toggle('muted', !musicEnabled);
+  document.getElementById('btn-sfx').classList.toggle('muted', !sfxEnabled);
+  document.getElementById('music-slider').value = Math.round(MUSIC_VOL * 100);
+  document.getElementById('sfx-slider').value   = Math.round(SFX_VOL   * 100);
+  document.querySelector('.btn-music-a').classList.toggle('active', _musicTrack === 'a');
+  document.querySelector('.btn-music-b').classList.toggle('active', _musicTrack === 'b');
+  document.querySelector('.btn-music-c').classList.toggle('active', _musicTrack === 'c');
+
   document.getElementById('randomize-btn').addEventListener('click', startRandomize);
 
   ['left', 'right'].forEach(side => {
@@ -825,10 +1217,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    document.querySelector(`#start-modal-${side} .btn-ai-toggle`).addEventListener('click', () => {
-      selectedUsers[side] = selectedUsers[side] === 'AI' ? null : 'AI';
-      updateUsernameUI();
-    });
   });
 
   document.querySelectorAll('.btn-continue').forEach(btn => {
@@ -847,34 +1235,70 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.querySelectorAll('.unlock-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const n = parseInt(btn.dataset.n);
-      btn.classList.add('lit');
-      setTimeout(() => btn.classList.remove('lit'), 380);
-      unlockProgress.push(n);
-      if (unlockProgress.length > UNLOCK_SEQ.length) unlockProgress.shift();
-      if (unlockProgress.length === UNLOCK_SEQ.length &&
-          unlockProgress.every((v, i) => v === UNLOCK_SEQ[i])) {
-        unlockProgress = [];
-        document.querySelectorAll('.btn-ai-toggle').forEach(b => b.disabled = false);
-        document.querySelectorAll('.unlock-btn').forEach(b => {
-          b.classList.add('lit');
-          setTimeout(() => b.classList.remove('lit'), 700);
-        });
-      }
-    });
+  document.getElementById('board').addEventListener('dblclick', () => {
+    if (!gameActive) return;
+    const isLeft = elphabaOnLeft ? currentPlayer === BLACK : currentPlayer === WHITE;
+    const quitOverlay = document.getElementById('quit-overlay');
+    quitOverlay.classList.toggle('rotate-left', isLeft);
+    quitOverlay.classList.toggle('rotate-right', !isLeft);
+    quitOverlay.querySelector('.quit-text').textContent = `${playerName(currentPlayer)} paused the game`;
+    quitOverlay.classList.remove('hidden');
   });
 
-  document.querySelectorAll('.btn-new-game').forEach(btn =>
-    btn.addEventListener('click', newGame)
-  );
+  document.getElementById('quit-overlay').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.add('hidden');
+  });
+
+  document.querySelector('.btn-start-over').addEventListener('click', () => {
+    document.getElementById('quit-overlay').classList.add('hidden');
+    newGame();
+  });
+
+  document.querySelector('.btn-exit').addEventListener('click', () => {
+    gameActive = false;
+    document.getElementById('quit-overlay').classList.add('hidden');
+    document.getElementById('start-overlay').classList.remove('hidden');
+  });
+
+  document.getElementById('btn-music').addEventListener('click', toggleMusic);
+  document.getElementById('btn-sfx').addEventListener('click', toggleSfx);
+
+  document.getElementById('music-slider').addEventListener('input', e => {
+    MUSIC_VOL = e.target.value / 100;
+    if (_musicAudio) _musicAudio.volume = MUSIC_VOL;
+    saveAudioPrefs();
+  });
+
+  document.getElementById('sfx-slider').addEventListener('input', e => {
+    SFX_VOL = e.target.value / 100;
+    saveAudioPrefs();
+  });
+
+  document.querySelector('.btn-music-a').addEventListener('click', () => switchMusicTrack('a'));
+  document.querySelector('.btn-music-b').addEventListener('click', () => switchMusicTrack('b'));
+  document.querySelector('.btn-music-c').addEventListener('click', () => switchMusicTrack('c'));
+
   document.querySelectorAll('.btn-play-again').forEach(btn =>
     btn.addEventListener('click', () => {
       btn.classList.toggle('ready');
       if (document.querySelectorAll('.btn-play-again.ready').length === 2) {
         document.querySelectorAll('.btn-play-again').forEach(b => b.classList.remove('ready'));
         newGame();
+      }
+    })
+  );
+
+  document.querySelectorAll('.btn-gloat').forEach(btn =>
+    btn.addEventListener('click', () => {
+      if (gloatUsesLeft <= 0 || !_gloatText) return;
+      const utt = new SpeechSynthesisUtterance(_gloatText);
+      const femaleVoice = window.speechSynthesis.getVoices()
+        .find(v => /zira|samantha|eva|aria|female/i.test(v.name));
+      if (femaleVoice) utt.voice = femaleVoice;
+      window.speechSynthesis.speak(utt);
+      gloatUsesLeft--;
+      if (gloatUsesLeft <= 0) {
+        document.querySelectorAll('.btn-gloat').forEach(b => { b.disabled = true; });
       }
     })
   );
