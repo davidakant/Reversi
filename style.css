@@ -474,8 +474,11 @@ body {
 
 #floating-piece {
   position: absolute;
+  left: 0;
+  top: 0;
   pointer-events: none;
   z-index: 5;
+  will-change: transform;
 }
 
 #floating-piece.hidden {

@@ -13,6 +13,8 @@ const DIRS  = [
 let board, currentPlayer, gameActive, cells;
 let dragActive = false, dragPlayer = null;
 let dragFrameX = 0, dragFrameY = 0, lastDragMoveTime = 0, bubbleLoopId = null, embersLoopId = null;
+let _dragHalf = 0, _dragRafId = null, _pendingClientX = 0, _pendingClientY = 0;
+let _floatingEl = null;
 let elphabaOnLeft = true, isAnimating = false;
 let gloatUsesLeft = 0, _gloatText = '';
 let hintsVisible = false;
@@ -237,35 +239,41 @@ function startDrag(e, player, slotEl) {
   dragActive = true;
   dragPlayer = player;
 
-  const floatingEl = document.getElementById('floating-piece');
-  floatingEl.className = `piece ${player === BLACK ? 'black' : 'white'}`;
-  floatingEl.style.transition = 'none';
+  _floatingEl = document.getElementById('floating-piece');
+  _floatingEl.className = `piece ${player === BLACK ? 'black' : 'white'}`;
+  _floatingEl.style.transition = 'none';
+
+  _dragHalf = _floatingEl.offsetWidth / 2; // read once; won't change during drag
 
   const { x, y } = toFrameCoords(e.clientX, e.clientY);
-  const half = floatingEl.offsetWidth / 2;
-  floatingEl.style.left = `${x - half}px`;
-  floatingEl.style.top  = `${y - half}px`;
+  _floatingEl.style.transform = `translate(${x - _dragHalf}px, ${y - _dragHalf}px)`;
 
   slotEl.style.opacity = '0.25';
   document.getElementById('ipad-frame').classList.add('dragging');
   dragFrameX = x;
   dragFrameY = y;
+  _pendingClientX = e.clientX;
+  _pendingClientY = e.clientY;
   lastDragMoveTime = performance.now();
   if (player === WHITE) startDragBubbles();
   else                  startDragEmbers();
 }
 
-function moveDrag(e) {
-  const floatingEl = document.getElementById('floating-piece');
-  const { x, y }   = toFrameCoords(e.clientX, e.clientY);
-  const half        = floatingEl.offsetWidth / 2;
-  floatingEl.style.left = `${x - half}px`;
-  floatingEl.style.top  = `${y - half}px`;
+function _applyDragPosition() {
+  _dragRafId = null;
+  const { x, y } = toFrameCoords(_pendingClientX, _pendingClientY);
+  _floatingEl.style.transform = `translate(${x - _dragHalf}px, ${y - _dragHalf}px)`;
+  updateDragHover(_pendingClientX, _pendingClientY);
+}
 
+function moveDrag(e) {
+  _pendingClientX = e.clientX;
+  _pendingClientY = e.clientY;
+  const { x, y } = toFrameCoords(e.clientX, e.clientY);
   dragFrameX = x;
   dragFrameY = y;
   lastDragMoveTime = performance.now();
-  updateDragHover(e.clientX, e.clientY);
+  if (!_dragRafId) _dragRafId = requestAnimationFrame(_applyDragPosition);
 }
 
 function updateDragHover(clientX, clientY) {
@@ -287,6 +295,7 @@ function updateDragHover(clientX, clientY) {
 }
 
 function endDrag(e, slotEl) {
+  if (_dragRafId) { cancelAnimationFrame(_dragRafId); _dragRafId = null; }
   stopDragBubbles();
   stopDragEmbers();
   dragActive = false;
@@ -329,6 +338,7 @@ function endDrag(e, slotEl) {
 }
 
 function cancelDrag(slotEl) {
+  if (_dragRafId) { cancelAnimationFrame(_dragRafId); _dragRafId = null; }
   stopDragBubbles();
   stopDragEmbers();
   dragActive = false;
