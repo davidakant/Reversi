@@ -478,7 +478,6 @@ body {
   top: 0;
   pointer-events: none;
   z-index: 100;
-  will-change: transform;
 }
 
 #floating-piece.hidden {
@@ -804,6 +803,30 @@ button:active {
 
 .btn-exit { background: #c2185b; }
 .btn-exit:active { background: #880e4f; }
+
+.quit-checkbox-row {
+  display: flex;
+  align-items: center;
+}
+
+.quit-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 215, 70, 0.9);
+  cursor: pointer;
+}
+
+.quit-checkbox-label input[type="checkbox"] {
+  width: 19px;
+  height: 19px;
+  accent-color: #d4a017;
+  cursor: pointer;
+}
 
 /* ── Startup overlay ─────────────────────────────────────── */
 

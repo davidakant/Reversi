@@ -258,8 +258,10 @@ function startDrag(e, player, slotEl) {
   _pendingClientX = e.clientX;
   _pendingClientY = e.clientY;
   lastDragMoveTime = performance.now();
-  if (player === WHITE) startDragBubbles();
-  else                  startDragEmbers();
+  if (pieceAnimationsEnabled) {
+    if (player === WHITE) startDragBubbles();
+    else                  startDragEmbers();
+  }
 }
 
 function _applyDragPosition() {
@@ -348,23 +350,18 @@ function cancelDrag(slotEl) {
   document.getElementById('ipad-frame').classList.remove('dragging');
   document.querySelectorAll('.cell.drag-over').forEach(c => c.classList.remove('drag-over'));
 
-  const floatingEl = document.getElementById('floating-piece');
-  const frame      = document.getElementById('ipad-frame');
-  const frameRect  = frame.getBoundingClientRect();
-  const scale      = frameRect.width / 1180;
-  const slotRect   = slotEl.getBoundingClientRect();
+  const slotRect = slotEl.getBoundingClientRect();
+  const { x, y } = toFrameCoords(
+    slotRect.left + slotRect.width  / 2,
+    slotRect.top  + slotRect.height / 2
+  );
 
-  const cx   = (slotRect.left + slotRect.width  / 2 - frameRect.left) / scale;
-  const cy   = (slotRect.top  + slotRect.height / 2 - frameRect.top)  / scale;
-  const half = floatingEl.offsetWidth / 2;
-
-  floatingEl.style.transition = 'left 0.25s ease-out, top 0.25s ease-out';
-  floatingEl.style.left = `${cx - half}px`;
-  floatingEl.style.top  = `${cy - half}px`;
+  _floatingEl.style.transition = 'transform 0.25s ease-out';
+  _floatingEl.style.transform = `translate(${x - _dragHalf}px, ${y - _dragHalf}px)`;
 
   setTimeout(() => {
-    floatingEl.className = 'piece hidden';
-    floatingEl.style.transition = '';
+    _floatingEl.className = 'piece hidden';
+    _floatingEl.style.transition = '';
     slotEl.style.opacity = '';
   }, 270);
 }
@@ -372,11 +369,8 @@ function cancelDrag(slotEl) {
 function spawnGlindaBubbles(row, col) {
   const frame = document.getElementById('ipad-frame');
   const cell  = cells[row][col];
-  const fRect = frame.getBoundingClientRect();
   const cRect = cell.getBoundingClientRect();
-  const s     = fRect.width / 1180;
-  const cx    = (cRect.left + cRect.width  / 2 - fRect.left) / s;
-  const cy    = (cRect.top  + cRect.height / 2 - fRect.top)  / s;
+  const { x: cx, y: cy } = toFrameCoords(cRect.left + cRect.width / 2, cRect.top + cRect.height / 2);
   const count = 14 + Math.floor(Math.random() * 6);
 
   for (let i = 0; i < count; i++) {
@@ -515,11 +509,8 @@ function emitDragEmbers(cx, cy) {
 function spawnElphabaEffect(row, col) {
   const frame = document.getElementById('ipad-frame');
   const cell  = cells[row][col];
-  const fRect = frame.getBoundingClientRect();
   const cRect = cell.getBoundingClientRect();
-  const s     = fRect.width / 1180;
-  const cx    = (cRect.left + cRect.width  / 2 - fRect.left) / s;
-  const cy    = (cRect.top  + cRect.height / 2 - fRect.top)  / s;
+  const { x: cx, y: cy } = toFrameCoords(cRect.left + cRect.width / 2, cRect.top + cRect.height / 2);
 
   const nSparks = 16 + Math.floor(Math.random() * 6);
   for (let i = 0; i < nSparks; i++) {
@@ -611,14 +602,16 @@ function spawnCellShimmer(row, col) {
   const cell  = cells[row][col];
   const fRect = frame.getBoundingClientRect();
   const cRect = cell.getBoundingClientRect();
-  const s     = fRect.width / 1180;
+  const s     = fRect.width / 820;
+  const size  = cRect.width / s;
+  const { x: cx, y: cy } = toFrameCoords(cRect.left + cRect.width / 2, cRect.top + cRect.height / 2);
 
   const el = document.createElement('div');
   el.className  = 'cell-shimmer';
-  el.style.left   = `${(cRect.left - fRect.left) / s}px`;
-  el.style.top    = `${(cRect.top  - fRect.top)  / s}px`;
-  el.style.width  = `${cRect.width  / s}px`;
-  el.style.height = `${cRect.height / s}px`;
+  el.style.left   = `${cx - size / 2}px`;
+  el.style.top    = `${cy - size / 2}px`;
+  el.style.width  = `${size}px`;
+  el.style.height = `${size}px`;
   frame.appendChild(el);
   el.addEventListener('animationend', () => el.remove());
 }
@@ -896,6 +889,7 @@ function showGameOver() {
 
 let musicEnabled = true;
 let sfxEnabled   = true;
+let pieceAnimationsEnabled = true;
 let _audioCtx    = null;
 let _musicAudio = null;   // HTMLAudioElement currently playing
 let _musicTrack = 'a';   // 'a' | 'b'
@@ -943,11 +937,17 @@ function switchMusicTrack(track) {
 }
 
 function saveAudioPrefs() {
-  localStorage.setItem('reversi_musicEnabled', musicEnabled);
-  localStorage.setItem('reversi_sfxEnabled',   sfxEnabled);
-  localStorage.setItem('reversi_musicVol',     MUSIC_VOL);
-  localStorage.setItem('reversi_sfxVol',       SFX_VOL);
-  localStorage.setItem('reversi_musicTrack',   _musicTrack);
+  localStorage.setItem('reversi_musicEnabled',          musicEnabled);
+  localStorage.setItem('reversi_sfxEnabled',            sfxEnabled);
+  localStorage.setItem('reversi_musicVol',              MUSIC_VOL);
+  localStorage.setItem('reversi_sfxVol',                SFX_VOL);
+  localStorage.setItem('reversi_musicTrack',            _musicTrack);
+  localStorage.setItem('reversi_pieceAnimationsEnabled', pieceAnimationsEnabled);
+}
+
+function togglePieceAnimations(e) {
+  pieceAnimationsEnabled = e.target.checked;
+  saveAudioPrefs();
 }
 
 function toggleMusic() {
@@ -1208,13 +1208,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const mv = localStorage.getItem('reversi_musicVol');
   const sv = localStorage.getItem('reversi_sfxVol');
   const st = localStorage.getItem('reversi_musicTrack');
-  if (sm !== null) musicEnabled = sm === 'true';
-  if (ss !== null) sfxEnabled   = ss === 'true';
-  if (mv !== null) MUSIC_VOL    = parseFloat(mv);
-  if (sv !== null) SFX_VOL      = parseFloat(sv);
-  if (st !== null) _musicTrack  = st;
+  const pa = localStorage.getItem('reversi_pieceAnimationsEnabled');
+  if (sm !== null) musicEnabled          = sm === 'true';
+  if (ss !== null) sfxEnabled            = ss === 'true';
+  if (mv !== null) MUSIC_VOL             = parseFloat(mv);
+  if (sv !== null) SFX_VOL               = parseFloat(sv);
+  if (st !== null) _musicTrack           = st;
+  if (pa !== null) pieceAnimationsEnabled = pa === 'true';
   document.getElementById('btn-music').classList.toggle('muted', !musicEnabled);
   document.getElementById('btn-sfx').classList.toggle('muted', !sfxEnabled);
+  document.getElementById('chk-piece-animations').checked = pieceAnimationsEnabled;
   document.getElementById('music-slider').value = Math.round(MUSIC_VOL * 100);
   document.getElementById('sfx-slider').value   = Math.round(SFX_VOL   * 100);
   document.querySelector('.btn-music-a').classList.toggle('active', _musicTrack === 'a');
@@ -1276,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-music').addEventListener('click', toggleMusic);
   document.getElementById('btn-sfx').addEventListener('click', toggleSfx);
+  document.getElementById('chk-piece-animations').addEventListener('change', togglePieceAnimations);
 
   document.getElementById('music-slider').addEventListener('input', e => {
     MUSIC_VOL = e.target.value / 100;
