@@ -785,6 +785,47 @@ function startRandomize() {
 
 // ── Game flow ─────────────────────────────────────────────────────────────────
 
+function saveGameState() {
+  localStorage.setItem('reversi_gameState', JSON.stringify({
+    board, currentPlayer, gameActive, elphabaOnLeft, selectedUsers
+  }));
+}
+
+function clearGameState() {
+  localStorage.removeItem('reversi_gameState');
+}
+
+function tryRestoreGame() {
+  const raw = localStorage.getItem('reversi_gameState');
+  if (!raw) return false;
+
+  let saved;
+  try { saved = JSON.parse(raw); } catch { return false; }
+  if (!saved || !saved.gameActive || !Array.isArray(saved.board)) return false;
+
+  board         = saved.board;
+  currentPlayer = saved.currentPlayer;
+  gameActive    = true;
+  elphabaOnLeft = saved.elphabaOnLeft;
+  selectedUsers.left  = saved.selectedUsers?.left  ?? null;
+  selectedUsers.right = saved.selectedUsers?.right ?? null;
+
+  document.getElementById('ipad-frame').classList.toggle('glinda-left', !elphabaOnLeft);
+  document.getElementById('start-overlay').classList.add('hidden');
+  document.querySelector('#name-strip-left  span').textContent = selectedUsers.left  || '';
+  document.querySelector('#name-strip-right span').textContent = selectedUsers.right || '';
+  updateUsernameUI();
+
+  buildGrid();
+  refreshBoard();
+  updatePanels();
+  updateSlots();
+  setStatus(`${playerName(currentPlayer)}'s turn`);
+  startMusic();
+  if (isAiTurn()) scheduleAiMove();
+  return true;
+}
+
 function newGame() {
   dragActive = false;
   hintsVisible = false;
@@ -807,6 +848,7 @@ function newGame() {
   updateSlots();
   setStatus(`${playerName(BLACK)}'s turn`);
   if (isAiTurn()) scheduleAiMove();
+  saveGameState();
 }
 
 function advanceTurn(flips, placed, stagger) {
@@ -847,6 +889,7 @@ function advanceTurn(flips, placed, stagger) {
       setTimeout(showGameOver, 600);
     }
   }
+  saveGameState();
 }
 
 function showGameOver() {
@@ -1273,6 +1316,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelector('.btn-exit').addEventListener('click', () => {
     gameActive = false;
+    clearGameState();
     document.getElementById('quit-overlay').classList.add('hidden');
     document.getElementById('start-overlay').classList.remove('hidden');
   });
@@ -1323,4 +1367,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('resize', scaleFrame);
   scaleFrame();
+
+  tryRestoreGame();
 });
